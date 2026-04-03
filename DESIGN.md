@@ -12,14 +12,9 @@ A Claude Code skill for timeboxing AI work sessions. The real job isn't time-tra
 
 **How it works:** Type `/timebox` to start a session. The skill asks three questions: how long you're working, what would feel complete, and what you're looking forward to after (the "pull" — grounded in approach motivation). It kicks off a lightweight loop at ~1/3 of the total window (e.g., 30 min → 10m intervals) that silently recalibrates posture based on time remaining. The pull is used as a narrowing anchor mid-session and as a personalized closing beat at the boundary. At soft boundaries, if the user wants to keep working, the skill adapts — but it doesn't proactively offer to extend.
 
-**Status:** Built, three test runs completed, session 4 in progress. See `wrap-test-log.md` for observations.
-- Session 1 (2026-03-30): Initial test, short window
-- Session 2 (2026-03-30): 30 min, loop fired correctly, closing artifact skipped
-- Session 3 (2026-03-31): **Failed.** Loop hung on 3rd fire due to context exhaustion. See test log for full analysis.
-- Session 4 (2026-04-01, Cowork): Pull question and setup landed well. Loop never fired (Cowork has no cron — needs scheduled task adaptation). Closing artifact wrote before confirming user was done.
-- Session 5 (2026-04-02, CLI): AoF module walkthrough with natural timebox behavior. Identified short-session design gap and setup trimming need.
+**Status:** Built and tested across multiple sessions in both CLI and Cowork environments. Testing has covered setup flow, loop firing, pull question, closing artifacts, and failure recovery. Key gaps still being tested: progressive narrowing, soft boundary extend, short-session design (<15 min), and Cowork cron adaptation.
 
-**Key changes (2026-04-01):**
+**Key changes:**
 - Lightweight loop fix: loop no longer re-invokes `/timebox`. Uses inline prompt that reads timebox file only.
 - Orphaned cron cleanup on every `/timebox` invocation.
 - **Pull question:** Third setup question grounded in approach motivation — "What are you looking forward to?" Used as narrowing anchor mid-session and personalized closing beat.
@@ -65,8 +60,8 @@ Stopping is easier when you're moving *toward* something, not just away from the
 - Hard vs. soft timeboxes: "until 2:40" / "I have a meeting" = hard; "about an hour" = soft. Ask if ambiguous.
 - Writes `~/.claude/timebox.json` with start time, end time/scope, boundary type, intention, pull, break nudge state
 - Asks "What would feel complete?" → records as `intention`
-- **The pull question:** "People focus better and disconnect more cleanly when they have something to look forward to on the other side. What's something coming up today — after this session, or later — that you're looking forward to?" Records as `pull`. Answer can be personal (picking up kids, lunch, Easter shopping) or work (prepping for a meeting). Optional — skip is fine. If Google Calendar MCP is available, offer to check what's next automatically.
-- Asks lightly where to capture loose threads (journal, plan file, Jira, etc.)
+- **The pull question:** "People focus better and disconnect more cleanly when they have something to look forward to on the other side. What's something coming up today — after this session, or later — that you're looking forward to?" Records as `pull`. Answer can be personal (picking up kids, lunch, errands) or work (prepping for a meeting). Optional — skip is fine. If Google Calendar MCP is available, offer to check what's next automatically.
+- Asks lightly where to capture loose threads (notes file, plan doc, Jira, etc.)
 - Kicks off a **lightweight loop** (inline prompt, NOT `/timebox` re-invocation)
 
 ### Phase 2: Working phase (plenty of time)
@@ -90,9 +85,9 @@ Stopping is easier when you're moving *toward* something, not just away from the
   - *Actually close:* Proceed to closing artifact as normal.
   - If no response by next loop cycle, close out anyway.
 - Stop *initiating*. No "shall we also..." or "one more thing..."
-- Write the closing artifact to the capture system named at setup, or journal by default
+- Write the closing artifact to the capture system named at setup
 - **Dynamic social beat** — never the same templated phrase twice. Generate fresh from the session:
-  - Reference the pull: "Hope Easter shopping is fun tonight!"
+  - Reference the pull: "Enjoy that lunch spot you mentioned!"
   - Reference the work: "You made a real decision today — the rest is execution."
   - Reference the body: "You've been at this for 90 minutes — go eat something."
   - Coaching stance: name how the person *moved* (overwhelm → clarity, scattered → decided, stuck → unblocked). Highest-value version when it lands.
@@ -102,7 +97,7 @@ Stopping is easier when you're moving *toward* something, not just away from the
 ## Key tactics
 
 **The pull — approach motivation.**
-The skill asks what the user is looking forward to and uses it as a reference point throughout: as a narrowing anchor in Phase 3 ("You mentioned lunch — want to start landing?"), as a personalized closing beat in Phase 4 ("Enjoy hearing about Winston's school day"). Grounded in approach vs. avoidance motivation — "I want to go do X" beats "time's up." Optional: no pull = normal behavior. Over time, the skill builds a rhythm memory so it can anticipate daily anchors instead of always asking.
+The skill asks what the user is looking forward to and uses it as a reference point throughout: as a narrowing anchor in Phase 3 ("You mentioned lunch — want to start landing?"), as a personalized closing beat in Phase 4 ("Enjoy that walk you mentioned"). Grounded in approach vs. avoidance motivation — "I want to go do X" beats "time's up." Optional: no pull = normal behavior. Over time, the skill builds a rhythm memory so it can anticipate daily anchors instead of always asking.
 
 **Progressive narrowing.**
 As the window shrinks, narrow the scope of suggestions. Early: "We could also refactor X." Late: "Let's finish this one thing." At boundary: "Let's capture where we are." The funnel points toward closure, not expansion. When the pull is available, narrowing references it — you're narrowing toward a real thing, not an abstract deadline.
@@ -129,7 +124,7 @@ When users hit a soft boundary and want to keep working, the skill offers three 
 
 **State file:** `~/.claude/timebox.json` — always written on invocation. Stores start time, end time/scope, boundary (hard/soft), intention, pull, and break nudge state. The loop reads it on every check-in.
 
-**Rhythm memory:** After 3-4 sessions, the skill writes `user_daily_rhythms.md` to the memory system, capturing recurring daily anchors (lunch ~noon, school pickup ~4:30, etc.). On future invocations, the skill reads this and can anticipate rather than always asking. The skill gets more useful over time — worth noting in user-facing docs.
+**Rhythm memory:** After 3-4 sessions, the skill writes `user_daily_rhythms.md` to Claude Code's memory system, capturing recurring daily anchors (lunch ~noon, afternoon meeting ~2pm, etc.). On future invocations, the skill reads this and can anticipate rather than always asking — the skill gets more useful over time. This data lives locally on your machine (in `~/.claude/projects/` memory files), not in any cloud service. It's as private as the rest of your filesystem. Nothing is sent to Anthropic or stored on their servers — Claude Code's memory is just markdown files on your hard drive.
 
 **Loop mechanism:** The loop uses a lightweight inline prompt — NOT a `/timebox` re-invocation. This is critical for surviving long sessions with heavy context. The inline prompt reads the timebox file, checks the time, and decides what to do without reloading the full skill instructions.
 
@@ -153,11 +148,11 @@ The skill detects context rather than assuming it. Git repo present → offer to
 
 ## Design decisions
 
-**Loop: lightweight, automatic, scaled to timebox.** Originally the loop re-invoked `/timebox`, reloading the full SKILL.md every fire. This caused the model to hang in session 3 when context was heavy (360+ messages of Confluence editing). Fixed: loop now uses a small inline prompt that just reads the timebox file and decides whether to speak. Load-bearing decision — this is the #1 reliability concern.
+**Loop: lightweight, automatic, scaled to timebox.** Originally the loop re-invoked `/timebox`, reloading the full SKILL.md every fire. This caused the model to hang when context was heavy. Fixed: loop now uses a small inline prompt that just reads the timebox file and decides whether to speak. Load-bearing decision — this is the #1 reliability concern.
 
-**Hard vs. soft boundaries.** Added after session 1 design iteration. "I have a meeting at 3" gets assertive auto-closure. "About an hour" gets a gentler ask-first approach with one grace cycle.
+**Hard vs. soft boundaries.** "I have a meeting at 3" gets assertive auto-closure. "About an hour" gets a gentler ask-first approach with one grace cycle.
 
-**Orphaned cron cleanup.** Added after session 3, where the model hung and Phase 3 never fired, leaving a zombie cron. Now every `/timebox` invocation cleans up stale crons first.
+**Orphaned cron cleanup.** If a session fails mid-run, it can leave a zombie cron. Now every `/timebox` invocation cleans up stale crons first.
 
 **State file: always written.** `~/.claude/timebox.json` stores start time, end time or scope, boundary type, intention, and break nudge state. The loop reads it on every check-in. Written even for immediate closure so the loop always has a consistent target.
 
@@ -172,55 +167,43 @@ The skill detects context rather than assuming it. Git repo present → offer to
 
 **Break nudge: 45-min threshold, health framing.** After 45 min with no apparent break, the skill suggests one — once. Tone is warm encouragement, not a warning.
 
-**Skill name: `/timebox`.** Originally `/wrap`. Renamed 2026-03-31 — snappier, fits the timebox metaphor directly.
+**Skill name: `/timebox`.** Originally `/wrap` — renamed because `/timebox` is snappier and fits the metaphor directly.
 
 ---
 
-## Ideas tracking (not doing yet)
+## Future ideas
 
-- **Context window awareness** — Check session file size during loop and suggest `/compact` if context is getting heavy. Second line of defense against the session 3 failure mode. Not needed if lightweight loop fix holds.
-- **Opening UX polish** — Session 3 opened with "Empty timebox — starting fresh" which felt robotic. Low priority vs. reliability, but worth smoothing out.
-- **"What would feel complete?" nuance** — For longer sessions (1:30+), this question may need to be more nuanced. "Good focus time" is a valid answer but gives the skill nothing to restate at closure. Explore: "If you walked away in 90 minutes feeling great, what would have happened?"
-- **Broader sharing** — Posit internal, then possibly public. After reliability is proven.
-- **User-facing README** — When sharing the skill, note that it learns user rhythms over time and improves with use.
+Tracked as [GitHub issues](https://github.com/LisaMarieMay/claude-skill-timebox/issues). Highlights:
 
-**The pull question — approach motivation (2026-04-01).** Added a third setup question: "What's something coming up today that you're looking forward to?" Grounded in approach vs. avoidance motivation — stopping because "I want to go do X" is stronger and feels better than stopping because "time's up." The pull is used throughout the session: as a narrowing anchor in Phase 2, as a personalized social beat in Phase 3. Optional — no pull = normal behavior. Calendar MCP integration is offered but never assumed. Over time, the skill builds a rhythm memory file so it can anticipate rather than always asking. Full brainstorm in journal 2026-04-01.
-
-**Soft boundary extend option (2026-04-01).** When a user hits a soft boundary and wants to keep working, the skill now offers three paths: set a new timebox (carry forward intention/pull), free-range with a safety-net check-in, or actually close. Previously the skill just closed — this was leaving value on the table. The extend option respects autonomy while keeping scaffolding available.
-
-**Dynamic social beat (2026-04-01).** The closing line must never be templated. "Nice session. Go stretch." got stale after 3 sessions. Now generated fresh from: the pull (if shared), the work accomplished, body state, or the coaching stance (naming the emotional/cognitive arc). The coaching stance — "you started scattered and ended with a spec" — is the highest-value version when it lands.
+- **Short session mode (<15 min)** — Different animal: loop barely fires, setup eats the session. Needs its own design pass. ([#1](https://github.com/LisaMarieMay/claude-skill-timebox/issues/1))
+- **Body-state awareness** — Eating, movement, going outside. ([#2](https://github.com/LisaMarieMay/claude-skill-timebox/issues/2))
+- **"What would feel complete?" nuance** — For longer sessions, this question needs sharper framing. ([#3](https://github.com/LisaMarieMay/claude-skill-timebox/issues/3))
+- **Opening question variety** — Phrasing pool so the opening doesn't get stale. ([#4](https://github.com/LisaMarieMay/claude-skill-timebox/issues/4))
+- **Name scope shifts** — When the session pivots, name it explicitly. ([#5](https://github.com/LisaMarieMay/claude-skill-timebox/issues/5))
+- **Confirmation beat before closing** — Pause before writing the closing artifact. ([#6](https://github.com/LisaMarieMay/claude-skill-timebox/issues/6))
+- **Multi-session / worktree support** ([#7](https://github.com/LisaMarieMay/claude-skill-timebox/issues/7))
+- **Context window awareness** — Suggest `/compact` if context is getting heavy during loop. Second line of defense against context exhaustion.
+- **Broader sharing** — After reliability is proven. User-facing README should note the skill learns rhythms over time.
 
 ---
 
 ## Next steps
 
 - [x] Draft the skill prompt
-- [x] Complete test sessions 1-2 (2026-03-30)
 - [x] Tune loop frequency — scales to ~1/3 of timebox
 - [x] Add hard/soft boundary distinction
 - [x] Rename `/wrap` → `/timebox`
-- [x] Diagnose session 3 failure (context exhaustion on loop fire)
-- [x] Fix: lightweight loop prompt, orphaned cron cleanup
-- [x] Add pull question (approach motivation) — designed and implemented 2026-04-01
-- [x] Add soft boundary extend option — designed and implemented 2026-04-01
-- [x] Replace templated social beat with dynamic closing — designed and implemented 2026-04-01
-- [x] Test the lightweight loop fix in a real session — session 4 (2026-04-01) ran in Cowork, loop never fired (Cowork has no cron). Lightweight fix untested in CLI.
-- [x] Test pull question in a real session — pull question landed well in session 4
+- [x] Diagnose and fix context exhaustion on loop fire (lightweight loop prompt, orphaned cron cleanup)
+- [x] Add pull question (approach motivation)
+- [x] Add soft boundary extend option
+- [x] Replace templated social beat with dynamic closing
+- [x] Test lightweight loop fix and pull question in real sessions
 - [ ] Test progressive narrowing with pull as anchor
 - [ ] Test closing artifact end-to-end with dynamic social beat
 - [ ] Test soft boundary extend option
 - [ ] Tune break nudge threshold (45 min untested)
 - [ ] Test rhythm memory after 3-4 sessions
 
-### From session 4/5 debrief (2026-04-02)
+### Open fixes
 
-**Session 4 (2026-04-01, Cowork):** Setup and closing worked, but loop never fired — Cowork doesn't have cron. See journal 2026-04-02 for full debrief.
-
-**Session 5 (2026-04-02, CLI):** Ran during AoF module walkthrough. /box was not explicitly invoked but the session had natural timebox behavior.
-
-**Fixes identified:**
-- [ ] **Add confirmation beat before closing.** Skill wrote closing artifact and cleared timebox before confirming user was done. Fix: after "ready to land?" + yes, add "Before I close this out — anything else, or are we good?" before writing artifact.
-- [ ] **Name scope shifts.** When session pivots (e.g., walkthrough → content design), name it: "We're switching from X to Y — that's a better use of the time." Makes the shift intentional.
-- [ ] **Short session design (<15 min).** These are a different animal — loop barely fires, Phase 2 has no time. Needs its own design pass: no loop (single one-shot nudge near end), minimal setup (skip pull question?), fewer steps. Not just a parameter change.
-- [ ] **Trim setup for tight timeboxes.** When someone says "10 minutes, hard stop" — intention + pull + capture system eats half the session. For <15 min: confirm window, maybe one question max, then GO.
 - [ ] **Cowork adaptation.** Replace `/loop` with `create_scheduled_task` call at session start. Point `timebox.json` at workspace folder instead of `~/.claude/` (Cowork sandbox doesn't persist).
