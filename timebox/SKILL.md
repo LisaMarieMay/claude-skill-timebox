@@ -20,7 +20,13 @@ Your job throughout this session is not just to help the user do good work — i
    - **Expired or empty session** (`end_time` is set and in the past, or file is empty/`{}`): The moment for closure has passed — don't try to reconstruct it. Clear the file and start fresh (proceed to step 3). The wrap-up artifact only has value in the moment; retroactive summaries aren't what this skill is for.
    - **Active session** (`end_time` is in the future, or `end_time` is null for scope-based): Treat this as a re-invocation mid-session. Say "You're still in your [scope] session — [X] minutes left. Still at it, or ready to close out?" Then resume the appropriate phase based on remaining time.
    - **No file exists**: Start fresh — proceed to step 3 below.
-3. Ask: **"How long are you working, or what are you trying to get done?"**
+3. Ask the opening question — **vary the phrasing each session.** Don't use the same wording twice in a row. Pick from this pool or generate something natural:
+   - "How long are you working today?"
+   - "Got a time constraint, or working until you're done?"
+   - "What are we working with — a fixed window or open-ended?"
+   - "How much time do you have?"
+   - If time of day is relevant: "Afternoon session — how long are you thinking?"
+   - If rhythm memory exists: draw on it — "I know you usually break for lunch — working until then?"
    - Accept any of: a duration ("1h", "30 min"), a clock time ("until 3pm"), a scope ("until we finish the design doc"), or "I'm done now / just want to land."
    - If they say they're done now or want to close out immediately, skip to Phase 3.
 4. **Determine if this is a hard or soft timebox:**
@@ -49,7 +55,7 @@ Your job throughout this session is not just to help the user do good work — i
 9. Ask lightly: **"Where do you want to capture things that come up — a plan file, journal, Jira, notes app?"** No need for a definitive answer now; this shapes the wrap-up later.
 10. Start the loop: calculate the loop interval as roughly 1/3 of the total window (e.g., 30 min → 10m, 60 min → 20m, 90 min → 30m). **Use a lightweight loop prompt — do NOT re-invoke `/timebox`.** Instead, kick off:
 
-   `/loop [interval] Check ~/.claude/timebox.json and run date. If no timebox or end_time is past: cancel this loop. If >20 min left: say nothing unless break nudge is due (45+ min elapsed, break_nudge_given false — deliver it and update the file). If ≤20 min left: one sentence that we're approaching the window. If at/past end_time and boundary is hard: write closing artifact to today's journal, cancel loop, clear timebox. If soft: ask "Ready to land?" — if no response by next fire, close out anyway.`
+   `/loop [interval] Check ~/.claude/timebox.json and run date. If no timebox or end_time is past: cancel this loop. If more than 1/3 of session remaining: say nothing unless break nudge is due (45+ min elapsed, break_nudge_given false — deliver it and update the file). If in the last 1/3 of session: one sentence that we're approaching the window. If at/past end_time and boundary is hard: write closing artifact to today's journal, cancel loop, clear timebox. If soft: ask "Ready to land?" — if no response by next fire, close out anyway.`
 
    This avoids reloading the full skill prompt on every fire, which prevents context exhaustion in long sessions.
 
@@ -60,12 +66,12 @@ Then begin normal collaboration.
 ## Phases of behavior
 
 ### Phase 1 — Plenty of time
-*(>20 min remaining, or <25 min elapsed in a scope session)*
+*(more than 1/3 of the session remaining, or <25 min elapsed in a scope session)*
 
 Normal collaboration. No time commentary. Don't suggest large new initiatives, but work freely. This is the main working phase.
 
 ### Phase 2 — Wrap-up window
-*(≤20 min remaining, or 45+ min elapsed in a scope session with no break)*
+*(last ~1/3 of the session, or 45+ min elapsed in a scope session with no break)*
 
 Shift tone from "what's next?" to "let's land this."
 
@@ -100,7 +106,11 @@ If no response to "Ready to land?" after one more loop cycle, write the closing 
 In all cases:
 - Stop initiating entirely. No "shall we also..." or "one more thing..."
 - **Reflect the work before confirming closure.** Before writing the formal closing artifact and clearing the timebox, offer a quick reflection of what got done — the social beat, the arc, the "here's what you accomplished." This is NOT the closing artifact; it's a conversational moment that lets the user feel the weight of what they did. Crucially, **do not assume this means they're stopping.** They may hear the reflection and want to do one more thing.
-- **Confirm they're actually done.** After the reflection, ask: "Before I close this out — anything else, or are we good?" This is one line, low friction, but it prevents the skill from closing prematurely. Only after they confirm → cancel loops, write the closing artifact, clear the timebox.
+- **Confirm they're actually done.** After the reflection, confirm before closing — but vary the language and read the room:
+  - When the user is clearly wrapping up (said "I'm done," "that's it," etc.): just confirm the behavior — "Sounds like you're wrapping up — want me to close this out?"
+  - When the user might be on the edge (trailing off, energy shifting): gentle offer — "That feel complete, or is there one more thing?"
+  - Rotate phrasing. Other options: "Anything else before I wrap this up?" / "Ready for me to close this out?"
+  - One line, low friction, but it prevents the skill from closing prematurely. Only after they confirm → cancel loops, write the closing artifact, clear the timebox.
 - **Cancel any running loop/cron** using CronList + CronDelete before writing the artifact. This is mandatory — do not skip it.
 - Produce the **closing artifact** (see below) without asking further permission — the confirmation above was the gate. If no capture system was named, default to the journal; if no journal context, write it to the terminal.
 - **The social beat — personalized, never templated.** Do NOT use the same generic closing line twice. Generate the closing line fresh from the session context. Draw from whichever fits best:
@@ -185,4 +195,4 @@ When the loop fires:
 
 ## Orphaned cron cleanup
 
-On every `/timebox` invocation (step 1, before anything else), run `CronList` and delete any crons whose prompt contains `/timebox` or `timebox.json`. Previous sessions may have left orphaned crons if Phase 3 never fired (e.g., model hung, session killed). Clean these up before starting fresh.
+On every `/timebox` invocation (step 1, before anything else), run `CronList` and delete any crons whose prompt contains `/timebox` or `timebox.json`. Previous sessions may have left orphaned crons if Phase 3 never fired (e.g., model hung, session killed). Clean these up before starting fresh. **Do this silently — no terminal output about cron cleanup.** The user's first impression should be the opening question, not housekeeping.

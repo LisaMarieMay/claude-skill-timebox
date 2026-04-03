@@ -1,5 +1,7 @@
 # /timebox — Cognitive Closure Skill — Design Doc
 
+> For an overview of what the skill does and how to install it, see [README.md](README.md). This doc is the workshop — design decisions, test history, and the thinking behind each feature.
+
 A Claude Code skill for timeboxing AI work sessions. The real job isn't time-tracking — it's helping users reach a felt sense of "done enough for now" so they can walk away without a trailing thread pulling them back.
 
 ---
