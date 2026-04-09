@@ -30,9 +30,11 @@ Your job throughout this session is not just to help the user do good work — i
    - Accept any of: a duration ("1h", "30 min"), a clock time ("until 3pm"), a scope ("until we finish the design doc"), or "I'm done now / just want to land."
    - If they say they're done now or want to close out immediately, skip to Phase 3.
 4. **Determine if this is a hard or soft timebox:**
-   - **Hard**: the user has an external constraint — a meeting, picking up kids, end of day. They *must* stop. Phrases like "until 2:40," "I have a meeting at 3," "need to leave by 5."
+   - **Hard**: the user has an unmovable external constraint — a meeting, a call, a departure time. They *cannot* keep going. Phrases like "until 2:40," "I have a meeting at 3," "need to leave by 5."
+   - **Firm**: the user has a real constraint but it has some give — a friend coming over, end of day, a flexible appointment. They *should* stop but a few extra minutes won't break anything. Phrases like "a friend is coming over at 5," "I want to be done by 4."
    - **Soft**: the user wants to spend roughly this much time but has flexibility. Phrases like "about an hour," "30 minutes or so," "a while."
    - If ambiguous, ask: "Is that a hard stop or more of a target?"
+   - Record the *what* of the constraint (e.g., "friend coming over," "standup at 2"), not just the category. This makes pull references and Phase 3 more natural.
 5. Write `~/.claude/timebox.json`:
 
 ```json
@@ -40,7 +42,8 @@ Your job throughout this session is not just to help the user do good work — i
   "start_time": "<ISO timestamp>",
   "end_time": "<ISO timestamp or null>",
   "scope": "<description or null>",
-  "boundary": "hard|soft",
+  "boundary": "hard|firm|soft",
+  "boundary_what": "<what the constraint is, e.g. 'friend coming over', 'standup'>",
   "intention": "",
   "pull": "",
   "break_nudge_given": false
@@ -87,7 +90,9 @@ Shift tone from "what's next?" to "let's land this."
 
 How Phase 3 fires depends on context:
 
-**Hard timebox:** The loop triggers Phase 3 assertively. Don't ask — just do it. Write the closing artifact, cancel loops, clear timebox. The user told you they have somewhere to be.
+**Hard timebox:** The loop triggers Phase 3 assertively. Don't ask — just do it. Write the closing artifact, cancel loops, clear timebox. The user has an unmovable constraint.
+
+**Firm timebox:** The loop flags that we're at the boundary and references the pull/constraint: "We're at 4:45 — your friend should be here soon. Ready to land, or do you have a few more minutes?" If the user says they have a bit more time, acknowledge it lightly ("Got it, I'll check back in 5") without re-running setup. This is a **micro-extension** — no new timebox, no ceremony, just a brief grace period with one more check. If they're still going after the micro-extension, then offer the full extend options (new timebox or free-range).
 
 **Soft timebox:** The loop asks "Ready to land?" once at the boundary — and if the user shared a pull, reference it: "Ready to land? Hope you enjoy [the thing]." If the user says they want to keep working, **offer to extend** rather than just closing:
 
@@ -183,8 +188,9 @@ When the loop fires:
 | State | Boundary | Action |
 |---|---|---|
 | Plenty of time, no break due | any | Say nothing. Continue normally. |
-| Entering wrap-up window | any | One sentence referencing the pull if available: "We're getting close — you mentioned [pull]. Want to start thinking about a landing point?" If no pull: "We're getting close to your window — want to start thinking about a landing point?" Then shift to Phase 2 posture. |
+| Entering wrap-up window | any | One sentence referencing the pull/constraint by name if available — prefer "your friend will be here soon" over "14 minutes left." The pull makes time feel real; a number doesn't. If no pull: "We're getting close to your window — want to start thinking about a landing point?" Then shift to Phase 2 posture. |
 | At or past boundary | **hard** | Trigger Phase 3 immediately. Write the artifact, cancel loops. Don't wait for permission. Reference the pull in the social beat if available. |
+| At or past boundary | **firm** | Flag the boundary and reference the constraint: "We're at [time] — [constraint]. Ready to land, or do you have a few more minutes?" If they want a bit more, micro-extend (acknowledge + check back in 5 min). |
 | At or past boundary | **soft** | Ask: "Ready to land?" + reference pull if available. If user wants to keep going, offer the extend option (new timebox or free-range). If no response by next loop cycle, trigger Phase 3 anyway. |
 | Break nudge due | any | Deliver the nudge (once). |
 | No `timebox.json` or session already closed | — | Cancel this loop immediately via CronList + CronDelete. Do not fire again. |
